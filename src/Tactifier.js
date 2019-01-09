@@ -1,14 +1,14 @@
-import {TactifierAlreadyStartedError, TactifierNotStartedError} from "./error/TactifierErrors";
-import {EventEmitter} from "events";
+const TactifierAlreadyStartedError = require("./error/TactifierErrors").TactifierAlreadyStartedError
+const EventEmitter = require("events").EventEmitter;
 
-export class Tactifier {
+module.exports.Tactifier =  class Tactifier {
 
     /**
      * @param bpm {number} ударов в секунду
      * @param settings {Object} - настройки тактифайера
      * @param settings.tactCheckIn {number} - раз в сколько миллисекунд будут обрабатываться эффекты
      * @param settings.debug {boolean} - режим отладки
-     * @param settings.beatCount {number} - количество битов, после которого закончить
+     * @param settings.duration {number} - количество миллисекунд, после которого закончить. Должен включать offsetMs, если он есть.
      * @param settings.offsetMs {number} - количество миллисекунд до начала музыки
      */
     constructor(bpm,settings){
@@ -16,7 +16,7 @@ export class Tactifier {
         this.$bpm = bpm; // ударов в минуту
         this.$bpms = bpm/60000; // ударов в миллисекунду
         this.$offsetMs = settings.offsetMs || 0;
-        this.$beatCount = settings.beatCount || null;
+        this.duration = settings.duration || null;
         this.$tactCheckIn = settings && settings.tactCheckIn ? settings.tactCheckIn : 50;
         this.$debug = settings && settings.debug ? settings.debug : false;
         this.$started = false; // статус тактифайера
@@ -28,6 +28,14 @@ export class Tactifier {
         this.on = this.$eventEmitter.on.bind(this.$eventEmitter);
         this.off = this.$eventEmitter.off.bind(this.$eventEmitter);
         this.$emit = this.$eventEmitter.emit.bind(this.$eventEmitter);
+    }
+
+    get isStarted(){
+        return this.$started;
+    }
+
+    get currentMusicTime(){
+        return Date.now() - this.$startDate - this.$offsetMs + this.$startOffsetMs;
     }
 
     /**
@@ -75,7 +83,7 @@ export class Tactifier {
      */
     stop(){
         if (!this.$started) {
-            throw new TactifierNotStartedError();
+            return
         }
         clearInterval(this.$tactInterval);
         this.$started = false;
@@ -96,7 +104,7 @@ export class Tactifier {
         const musicTime = Date.now() - this.$startDate - this.$offsetMs + this.$startOffsetMs;
         const currentBeat = musicTime*this.$bpms;
         if (this.$debug) console.log("$tick",currentBeat,musicTime);
-        if (this.$beatCount && this.$beatCount <= currentBeat) {
+        if (this.duration && this.duration <= (musicTime+this.$offsetMs)) {
             this.stop();
             this.$emit("end");
         }
@@ -107,7 +115,7 @@ export class Tactifier {
                          effect.fn.call(effect,currentBeat,effect);
                      })
     }
-}
+};
 
 function createTactifierEffect(startBeat,endBeat,fn,priority) {
     const effect = Object.create(null);

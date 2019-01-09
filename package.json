@@ -1,11 +1,15 @@
 {
-  "name": "vtact",
+  "name": "vtact-core",
   "version": "0.0.1",
-  "description": "an music show core",
+  "description": "an vtact music show core",
   "main": "index.js",
   "scripts": {
-    "test": "node --experimental-modules ./src/test/test.mjs"
+    "test": "node ./test/test.js"
   },
   "author": "MYXOMOPX <myxomopx@gmail.com>",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+  },
+  "dependencies": {
+  }
 }
