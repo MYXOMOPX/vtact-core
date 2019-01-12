@@ -1,7 +1,7 @@
 const TactifierAlreadyStartedError = require("./error/TactifierErrors").TactifierAlreadyStartedError
 const EventEmitter = require("events").EventEmitter;
 
-module.exports.Tactifier =  class Tactifier {
+module.exports =  class Tactifier {
 
     /**
      * @param bpm {number} ударов в секунду
@@ -13,6 +13,7 @@ module.exports.Tactifier =  class Tactifier {
      */
     constructor(bpm,settings){
         if (!settings) settings = {};
+        this.$settings = settings; // Для облегчения сериализации.
         this.$bpm = bpm; // ударов в минуту
         this.$bpms = bpm/60000; // ударов в миллисекунду
         this.$offsetMs = settings.offsetMs || 0;
@@ -40,11 +41,12 @@ module.exports.Tactifier =  class Tactifier {
 
     /**
      * Добавляет эффект
-     * @param beatFrom - с какого бита будет работать эффект
-     * @param beatTo - до какого бита будет работать эффект
-     * @param effectFn - функция эффекта
-     * @param priority - приоритет
+     * @param beatFrom {number} - с какого бита будет работать эффект
+     * @param beatTo {number|null} - до какого бита будет работать эффект
+     * @param effectFn {function} - функция эффекта
+     * @param [priority] {number} - приоритет
      * Чем выше приоритет, тем раньше сработает эффект. Дефолтный приоритет 50.
+     * Если нет аргумента beatTo, тогда эффект перестанет выполняться, когда вернет что-либо касующееся в true
      * @returns {Object} effect - эффект, необходим для removeEffect
      */
     addEffect(beatFrom, beatTo, effectFn, priority) {
@@ -75,6 +77,9 @@ module.exports.Tactifier =  class Tactifier {
         this.$startDate = Date.now();
         this.$started = true;
         this.$tactInterval = setInterval(this.$tick.bind(this),this.$tactCheckIn);
+        this.$effects.forEach(eff => {
+            delete eff.stopped;
+        });
         this.$emit("start",timeFromMs);
     }
 
@@ -106,14 +111,17 @@ module.exports.Tactifier =  class Tactifier {
         if (this.$debug) console.log("$tick",currentBeat,musicTime);
         if (this.duration && this.duration <= (musicTime+this.$offsetMs)) {
             this.stop();
-            this.$emit("end");
+            this.$emit("end",musicTime,currentBeat);
+            return;
         }
         this.$effects
-                     .filter(ef => ef.startBeat <= currentBeat && ef.endBeat > currentBeat) // Только те, что уже начались и не закончились
+                     .filter(ef => ef.startBeat <= currentBeat && ef.endBeat > currentBeat ** !ef.stopped) // Только те, что уже начались и не закончились
                      .sort((ef1, ef2) => ef2.priority - ef1.priority) // Desc-сортировка по приоритету
                      .forEach(effect => {
-                         effect.fn.call(effect,currentBeat,effect);
-                     })
+                         const result = effect.fn.call(effect,currentBeat,effect);
+                         if (!effect.endBeat && result) effect.stopped = true;
+                     });
+        this.$emit("afterTick",musicTime,currentBeat);
     }
 };
 
