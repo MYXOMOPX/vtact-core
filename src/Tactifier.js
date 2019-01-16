@@ -6,7 +6,6 @@ module.exports =  class Tactifier {
     /**
      * @param bpm {number} ударов в секунду
      * @param settings {Object} - настройки тактифайера
-     * @param settings.tactCheckIn {number} - раз в сколько миллисекунд будут обрабатываться эффекты
      * @param settings.debug {boolean} - режим отладки
      * @param settings.duration {number} - количество миллисекунд, после которого закончить. Должен включать offsetMs, если он есть.
      * @param settings.offsetMs {number} - количество миллисекунд до начала музыки
@@ -18,7 +17,6 @@ module.exports =  class Tactifier {
         this.$bpms = bpm/60000; // ударов в миллисекунду
         this.$offsetMs = settings.offsetMs || 0;
         this.duration = settings.duration || null;
-        this.$tactCheckIn = settings && settings.tactCheckIn ? settings.tactCheckIn : 50;
         this.$debug = settings && settings.debug ? settings.debug : false;
         this.$started = false; // статус тактифайера
         this.$startOffsetMs = 0; // Миллисекунда с которой начали
@@ -26,8 +24,8 @@ module.exports =  class Tactifier {
 
         // Делаем Tactifier emitter'ом
         this.$eventEmitter = new EventEmitter();
-        this.on = this.$eventEmitter.on.bind(this.$eventEmitter);
-        this.off = this.$eventEmitter.off.bind(this.$eventEmitter);
+        this.on = this.$eventEmitter.addListener.bind(this.$eventEmitter);
+        this.off = this.$eventEmitter.removeListener.bind(this.$eventEmitter);
         this.$emit = this.$eventEmitter.emit.bind(this.$eventEmitter);
     }
 
@@ -76,7 +74,6 @@ module.exports =  class Tactifier {
         this.$startOffsetMs = timeFromMs;
         this.$startDate = Date.now();
         this.$started = true;
-        this.$tactInterval = setInterval(this.$tick.bind(this),this.$tactCheckIn);
         this.$effects.forEach(eff => {
             delete eff.stopped;
         });
@@ -90,7 +87,6 @@ module.exports =  class Tactifier {
         if (!this.$started) {
             return
         }
-        clearInterval(this.$tactInterval);
         this.$started = false;
     }
 
@@ -105,10 +101,15 @@ module.exports =  class Tactifier {
         this.start(timeMs);
     }
 
-    $tick(){
+    /**
+     * Обработать текущий момент.
+     * Должен запускаться только во включенном состоянии.
+     */
+    tick(){
+        if (!this.isStarted) return;
         const musicTime = Date.now() - this.$startDate - this.$offsetMs + this.$startOffsetMs;
         const currentBeat = musicTime*this.$bpms;
-        if (this.$debug) console.log("$tick",currentBeat,musicTime);
+        if (this.$debug) console.log("tick",currentBeat,musicTime);
         if (this.duration && this.duration <= (musicTime+this.$offsetMs)) {
             this.stop();
             this.$emit("end",musicTime,currentBeat);

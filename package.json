@@ -1,6 +1,6 @@
 {
   "name": "vtact-core",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "an vtact music show core",
   "main": "index.js",
   "scripts": {

@@ -27,7 +27,13 @@ const start = () => {
         pixelEffects.clear();
     });
     tactifier.start();
-    tactifier.on("end",() => console.log("tactifier end",tactifierJson));
+    const tactifierInterval = setInterval(() => {
+        tactifier.tick();
+    },40);
+    tactifier.on("end",() => {
+        clearInterval(tactifierInterval);
+        console.log("tactifier end",tactifierJson)
+    });
     console.log("start!");
     tactifierJson = serializeTactifier(tactifier);
 };
@@ -38,7 +44,13 @@ const startWithJson = () => {
         console.log(pixelEffects.getArray());
         pixelEffects.clear();
     });
+    const tactifierInterval = setInterval(() => {
+        tactifier.tick();
+    },40);
+    tactifier.on("end",() => {
+        clearInterval(tactifierInterval);
+        console.log("tactifier end (json)",tactifierJson)
+    });
     tactifier.start();
-    tactifier.on("end",() => console.log("tactifier end (json)"));
     console.log("start (json)!");
 };
